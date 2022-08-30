@@ -1,0 +1,275 @@
+from platform import platform
+import pygame as pg 
+pg.mixer.init()
+pg.font.init()
+
+class Tile(pg.sprite.Sprite):
+    def __init__(self, skin, position, size=(50,50)):
+        super().__init__()
+        self.image = pg.image.load(skin)
+        self.image = pg.transform.scale(self.image, size)
+        position = (position[0]*size[0],position[1]*size[1] )
+        self.rect = pg.Rect(position, size)
+    def draw(self, surface):
+        surface.blit(self.image, self.rect.topleft)
+
+
+    def update(self, shift):
+        self.rect.topleft += pg.Vector2(shift)
+
+class ImageSprite(pg.sprite.Sprite):
+    def __init__(self, filename, position, size, speed=(0,0)): # create the constructor (runs when a new object is created)
+        self.image = pg.image.load(filename)
+        self.image = pg.transform.scale(self.image, size)
+        self.rect = pg.Rect(position, size)
+        self.max_speed = pg.Vector2(speed)
+        self.speed = pg.Vector2((0,0))
+    def draw(self, surface):
+        surface.blit(self.image, self.rect.topleft)
+
+
+
+class Player(ImageSprite):
+    def __init__(self, filename, position, size, speed=(0,0)):
+        super().__init__(filename, position, size, speed)
+        self.original_pos = position
+        self.jumping_sound = pg.mixer.Sound("jump_01.wav")
+        self.rect.topleft = self.original_pos
+    def update(self):
+        keys = pg.key.get_pressed()
+        
+        if keys[pg.K_a]:
+            self.speed.x = -self.max_speed.x
+        if keys[pg.K_d]:
+            self.speed.x = self.max_speed.x 
+        #if not keys[pg.K_a] and not keys[pg.K_d]:
+         #   self.speed.x = 0
+        if keys[pg.K_w] and self.grounded:
+            self.jumping_sound.play()
+            self.speed.y = -self.max_speed.y
+            self.grounded = False
+
+
+        #horizontal movement
+        self.rect.x += self.speed.x
+
+        if self.speed.x > 2 or self.speed.x < -2:
+            if self.speed.x>0:
+                self.speed.x -= 0.2
+            else :
+                self.speed.x += 0.2
+        else:
+            self.speed.x = 0
+        
+
+        tiles = pg.sprite.spritecollide(self, platforms, False)
+        for tile in tiles:
+            if self.speed.x<0:
+                self.rect.left = tile.rect.right
+            elif self.speed.x>0:
+                self.rect.right = tile.rect.left
+            self.speed.x =0
+        
+
+        if self.rect.left < 200:
+            self.rect.left = 200
+            shift.x = round(-self.speed.x)
+        elif self.rect.right > WIDTH-200:
+            self.rect.right = WIDTH-200
+            shift.x = round(-self.speed.x)
+        else:
+            shift.x = 0
+
+
+
+        #vertical movement
+        self.rect.y += self.speed.y
+        #gravity
+        self.speed.y += 0.5
+
+        
+
+        tiles = pg.sprite.spritecollide(self, platforms, False)
+        for tile in tiles:
+            if self.speed.y>0:
+                self.rect.bottom = tile.rect.top
+                self.grounded = True
+            elif self.speed.y<0:
+                self.rect.top = tile.rect.bottom
+            self.speed.y = 0
+
+
+
+
+ 
+        
+        if self.rect.top < 200:
+            self.rect.top = 200
+            shift.y = round(-self.speed.y)
+        elif self.rect.bottom > HEIGHT-200:
+            self.rect.bottom = HEIGHT-200
+            shift.y = round(-self.speed.y)
+        else:
+            shift.y = 0
+    def is_colliding_with(self, other_sprite):
+        return pg.sprite.collide_rect(self, other_sprite)
+        
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > WIDTH:
+            self.rect.right = WIDTH
+        if self.rect.bottom > HEIGHT:
+            self.rect.bottom = 0
+        if self.rect.top<0:
+            self.rect.top = 0
+
+
+class TextSprite(pg.sprite.Sprite):
+    def __init__(self, text, text_color, pos , font_size, rect_color = None, rect_size = None):
+        self.font = pg.font.Font("font2.otf", font_size)
+        self.image = self.font.render(text, True, text_color)
+        self.pos = pos
+        self.rect_color = rect_color
+        self.text_color = text_color
+        self.rect = pg.Rect(pos, rect_size)
+
+
+    def draw(self, surface,  bg=False):
+        if bg:
+            pg.draw.rect(surface, 'blue', self.rect)
+        surface.blit(self.image, self.pos)
+    
+    def set_text(self, new_text):
+        self.image = self.font.render(new_text, True, self.text_color)   
+
+player = Player(filename="Loin.jpg", position=(0, 80), size=(30,30), speed=(6, 13))
+point = 0
+
+point_counter = TextSprite('Points: '+str(point), "springgreen", (720,0), 40,  rect_size=(335, 60), rect_color='blue')
+
+# Create the window
+WIDTH = 1000
+HEIGHT = 600
+window = pg.display.set_mode((WIDTH, HEIGHT))
+# Create a clock object
+clock = pg.time.Clock()
+
+
+background =  ImageSprite(filename='bg.webp', position=(0,0),  size = (WIDTH, HEIGHT))
+
+lvl1 = [
+    '  RRRRRRRRRRR              RRRRRRRRR      RRRRRRRRR',                       
+    '                                         g         ',
+    '                        g  CCCCCCCCCCCCCCCCCCCCCCCC',
+    '       g          CCCCCCCCCCCCCCC g                ',
+    '    CCCCCCC                    CCCCCCC             ',
+    '               CC      g       CC      C g         ',
+    '   CCCCCCCC        CCCCCCC         CCCCCCCCC       ',
+    '    P                                     g        ',
+    'BBBBBBBB  BBBB    BBBBBBBBB       BBBBBBBBBBBBBBBBB',
+    'BBBBBBBB  BBBB    BBBBBBBBB       BBBBBBBBBBBBBBBBB',
+    '                                                   ',
+    'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'
+]
+game_on = True
+game_over = TextSprite('', 'white', (0,0), 60, rect_color="black", rect_size=(1000, 600))
+winning = TextSprite('', 'white', (0,0), 60, rect_color="black", rect_size=(1000, 600))
+platforms = pg.sprite.Group()
+death_tiles = pg.sprite.Group()
+coins = pg.sprite.Group()
+goals = pg.sprite.Group()
+
+platform_sprites = {
+    'B':'bricks.png',
+    'C':'brick2.png',
+    'R':'Cloud.png'
+}
+death_sprite = {
+    'L':'lava.png',
+    'V':'void.png'
+}
+
+
+coin_sprite = {
+    'g':'Coin.png'
+}
+goal_skin = {
+    'P':'portal.png'
+}
+def create_map(lvl):
+    platforms.empty()
+    for y, row in enumerate(lvl):
+        for x, tile in enumerate(row):
+            if tile in platform_sprites:
+                new_tile = Tile(skin=platform_sprites[tile],position=(x, y))
+                platforms.add(new_tile)
+            if tile in death_sprite:
+                new_tile = Tile(skin=death_sprite[tile],position=(x, y))
+                death_tiles.add(new_tile)
+            if tile == 'g':
+                new_tile = Tile(skin=coin_sprite[tile],position=(x, y))
+                coins.add(new_tile)
+            if tile == 'P':
+                new_tile = Tile(skin=goal_skin[tile],position=(x, y))
+                goals.add(new_tile)
+
+
+shift =  pg.Vector2((0,0))
+
+create_map(lvl1)
+while not pg.event.peek(pg.QUIT):
+
+    window.fill((255,255,255))
+    background.draw(window)
+    
+    platforms.draw(window)
+    
+    death_tiles.draw(window)
+    
+    player.draw(window)
+    
+    coins.draw(window)
+    
+    goals.draw(window)
+    
+    if game_on:
+        platforms.update(shift)
+        death_tiles.update(shift)
+        player.update()
+        coins.update(shift)
+        goals.update(shift)
+
+
+    death = pg.sprite.spritecollide(player, death_tiles, False)
+    if death:
+        game_over.set_text('Game Over')
+        game_over.draw(window, bg = True)
+        game_on = False
+
+        
+    win = pg.sprite.spritecollide(player, goals, False)
+    if win:
+        winning.set_text('GG bro')
+        winning.draw(window, bg = True)
+        game_on = False
+
+
+    coin_hit = pg.sprite.spritecollide(player, coins, True)
+    for hit in coin_hit:
+        point+=1
+        point_counter.set_text('Points: ' + str(point))
+        
+    point_counter.draw(window, bg = True)
+    #game_over.set_text('Game Over')
+    #game_over.draw(window, bg =  False)
+
+    pg.display.update()
+    clock.tick(60)
+
+#add sounds, images and point counter (visible)
+
+
+
+
+
+
